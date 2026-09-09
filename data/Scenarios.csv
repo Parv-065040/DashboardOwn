@@ -1,7 +1,7 @@
 Scenario,Cooperative_Fee_Pct,Variable_Cost_Pct,Demand_Factor
-Base,0.15,0.03,1.00
+Base,0.15,0.03,1.0
 Demand Downside,0.15,0.03,0.75
 Demand Upside,0.15,0.03,1.25
-Fee Increase,0.18,0.03,1.00
-Cost Pressure,0.15,0.05,1.00
+Fee Increase,0.18,0.03,1.0
+Cost Pressure,0.15,0.05,1.0
 Combined Stress,0.15,0.05,0.75
