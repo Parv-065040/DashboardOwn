@@ -63,4 +63,4 @@ Swap in a refreshed export with the same column structure and the whole dashboar
 
 ## Author
 
-Built by **Parv**, Team Spartans — PGDM (Business Data Analytics), FORE School of Management.
+Built by Parv & Awantika, Team Spartans — PGDM (Business Data Analytics), FORE School of Management.
