@@ -97,6 +97,25 @@ PLOTLY_LAYOUT = dict(
 )
 
 
+def html(s: str) -> str:
+    """Collapse a multi-line HTML string to one line before handing it to
+    st.markdown(unsafe_allow_html=True). A blank/whitespace-only interior line
+    (e.g. when an optional f-string fragment is empty) can make Streamlit's
+    markdown parser end the raw-HTML block early and render the remaining
+    indented lines as a literal code block instead of HTML. Flattening removes
+    that failure mode entirely, regardless of parser version."""
+    return " ".join(line.strip() for line in s.strip().splitlines() if line.strip())
+
+
+def hex_to_rgba(hex_color: str, alpha: float) -> str:
+    """Convert a '#RRGGBB' color to an 'rgba(r,g,b,a)' string. Some Plotly
+    versions (e.g. 5.x, which this app targets) reject 8-digit hex-with-alpha
+    colors like '#RRGGBBAA', so rgba() is the portable way to get transparency."""
+    hex_color = hex_color.lstrip("#")
+    r, g, b = (int(hex_color[i : i + 2], 16) for i in (0, 2, 4))
+    return f"rgba({r},{g},{b},{alpha})"
+
+
 def style_fig(fig, title=None, height=360):
     fig.update_layout(**PLOTLY_LAYOUT, height=height)
     if title:
@@ -245,11 +264,13 @@ def kpi_card(label, value, delta=None, positive=True, sublabel=None):
         delta_html = f'<div class="kpi-delta" style="color:{color};">{arrow} {delta}</div>'
     sub_html = f'<div class="kpi-sub">{sublabel}</div>' if sublabel else ""
     st.markdown(
-        f"""<div class="kpi-card">
+        html(
+            f"""<div class="kpi-card">
             <div class="kpi-label">{label}</div>
             <div class="kpi-value">{value}</div>
             {delta_html}{sub_html}
-        </div>""",
+        </div>"""
+        ),
         unsafe_allow_html=True,
     )
 
@@ -264,10 +285,12 @@ def flag_pill(text, good):
 # ============================================================
 with st.sidebar:
     st.markdown(
-        f"""<div class="brand-row">
+        html(
+            f"""<div class="brand-row">
             <div class="logo-badge">DO</div>
             <div class="brand-name">Dashboard<span>Own</span></div>
-        </div>""",
+        </div>"""
+        ),
         unsafe_allow_html=True,
     )
     st.caption("CFO Financial Dashboard · FY2026")
@@ -314,7 +337,8 @@ tab_cover, tab_exec, tab_growth, tab_members, tab_scenario, tab_sme = st.tabs(
 # ---------------------------------------------------------------
 with tab_cover:
     st.markdown(
-        f"""
+        html(
+            f"""
         <div style="background:{INK}; border-radius:10px; padding:56px 48px; color:white; margin-bottom:24px;">
             <div style="display:flex; align-items:center; margin-bottom:28px;">
                 <div style="width:56px; height:56px; border-radius:10px; background:{GOLD}; color:{INK};
@@ -334,7 +358,8 @@ with tab_cover:
                 from the underlying financial data, with an interactive what-if scenario planner.
             </div>
         </div>
-        """,
+        """
+        ),
         unsafe_allow_html=True,
     )
 
@@ -427,7 +452,8 @@ with tab_exec:
         good_be = latest.Breakeven_Flag == "Above Break-even"
         good_util = latest.Utilization_Flag == "On Target"
         st.markdown(
-            f"""
+            html(
+                f"""
             <div class="status-banner">
                 Financial health: {flag_pill(latest.Financial_Health_Flag, good_health)}<br><br>
                 Break-even position: {flag_pill(latest.Breakeven_Flag, good_be)}<br><br>
@@ -436,14 +462,15 @@ with tab_exec:
                 <b>CEO Status:</b> {latest.CEO_Status}<br>
                 <b>Growth Signal:</b> {latest.CEO_Growth_Signal}
             </div>
-            """,
+            """
+            ),
             unsafe_allow_html=True,
         )
 
     st.markdown("<br>", unsafe_allow_html=True)
     st.markdown("**GMV & Operating Surplus Trend**")
     trend = go.Figure()
-    trend.add_bar(x=view.MonthLabel, y=view.GMV, name="GMV", marker_color=f"{GOLD}88", yaxis="y")
+    trend.add_bar(x=view.MonthLabel, y=view.GMV, name="GMV", marker_color=hex_to_rgba(GOLD, 0.55), yaxis="y")
     trend.add_trace(go.Scatter(x=view.MonthLabel, y=view.Operating_Surplus, name="Operating Surplus", mode="lines+markers", line=dict(color=INK, width=2.5), yaxis="y2"))
     trend.update_layout(
         yaxis=dict(title="GMV", side="left"),
@@ -631,7 +658,7 @@ with tab_scenario:
             x="Scenario",
             y="Operating Surplus",
             color="is_selected",
-            color_discrete_map={True: GOLD, False: f"{INK}55"},
+            color_discrete_map={True: GOLD, False: hex_to_rgba(INK, 0.33)},
         )
         bar.update_layout(showlegend=False)
         st.plotly_chart(style_fig(bar, height=340), use_container_width=True)
@@ -653,16 +680,20 @@ with tab_scenario:
     diff = base_result["surplus"] - result["surplus"]
     if selected_name == "Base":
         st.markdown(
-            f"""<div class="status-banner"><b>Base case</b> holds the current {FEE_PCT*100:.0f}% fee / {VARIABLE_PCT*100:.0f}% variable
-            cost structure at 1.0x demand — annual operating surplus of {fmt_inr(result['surplus'], UNIT)}.</div>""",
+            html(
+                f"""<div class="status-banner"><b>Base case</b> holds the current {FEE_PCT*100:.0f}% fee / {VARIABLE_PCT*100:.0f}% variable
+            cost structure at 1.0x demand — annual operating surplus of {fmt_inr(result['surplus'], UNIT)}.</div>"""
+            ),
             unsafe_allow_html=True,
         )
     else:
         direction = "a downside" if diff >= 0 else "an upside"
         pct_of_base = abs(diff) / base_result["surplus"] if base_result["surplus"] else np.nan
         st.markdown(
-            f"""<div class="status-banner">Versus Base, <b>{selected_name}</b> shifts annual operating surplus by
-            {'-' if diff >= 0 else '+'}{fmt_inr(abs(diff), UNIT)} — {direction} of roughly {fmt_pct(pct_of_base)}.</div>""",
+            html(
+                f"""<div class="status-banner">Versus Base, <b>{selected_name}</b> shifts annual operating surplus by
+            {'-' if diff >= 0 else '+'}{fmt_inr(abs(diff), UNIT)} — {direction} of roughly {fmt_pct(pct_of_base)}.</div>"""
+            ),
             unsafe_allow_html=True,
         )
 
